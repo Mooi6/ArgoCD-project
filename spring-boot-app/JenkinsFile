@@ -22,8 +22,10 @@ pipeline {
         stage('Build & Test with Maven') {
             steps {
                 echo 'Building Application...'
-                // بما إننا واقفين جوه المجلد الفعلي، هنشغل المافن مباشرة هنا
-                sh 'mvn clean package -DskipTests'
+                // الدخول للمجلد اللي جواه الـ pom.xml فعلياً
+                dir('spring-boot-app') {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
@@ -31,7 +33,9 @@ pipeline {
             steps {
                 echo 'Running SonarQube Code Quality Scan...'
                 withSonarQubeEnv('sonar-server') {
-                    sh 'mvn sonar:sonar'
+                    dir('spring-boot-app') {
+                        sh 'mvn sonar:sonar'
+                    }
                 }
             }
         }
@@ -39,14 +43,18 @@ pipeline {
         stage('Trivy FS Scan (Security)') {
             steps {
                 echo 'Scanning File System for Vulnerabilities...'
-                sh 'trivy fs . --severity HIGH,CRITICAL'
+                dir('spring-boot-app') {
+                    sh 'trivy fs . --severity HIGH,CRITICAL'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker Image...'
-                sh "docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ."
+                dir('spring-boot-app') {
+                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ."
+                }
             }
         }
 
@@ -72,13 +80,13 @@ pipeline {
                 echo 'Updating Deployment Configuration...'
                 withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDENTIALS_ID}", passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                     
-                    // تعديل مسار ملف المانيفست بناءً على هيكل الريبو بتاعك
-                    sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}|g' ../spring-boot-app-manifests/deployment.yml"
+                    // التعديل في مجلد المانيفستس الموجود في الـ Root برة
+                    sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}|g' spring-boot-app-manifests/deployment.yml"
                     
                     sh """
                         git config user.email "jenkins@local.com"
                         git config user.name "Jenkins CI"
-                        git add ../spring-boot-app-manifests/deployment.yml
+                        git add spring-boot-app-manifests/deployment.yml
                         git commit -m "Update image tag to ${BUILD_NUMBER} [skip ci]"
                         git push https://\${GITHUB_TOKEN}@github.com/\${GITHUB_USER}/ArgoCD-project.git HEAD:main
                     """
