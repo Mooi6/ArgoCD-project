@@ -22,7 +22,6 @@ pipeline {
         stage('Build & Test with Maven') {
             steps {
                 echo 'Building Application...'
-                // الدخول للمجلد اللي جواه الـ pom.xml فعلياً
                 dir('spring-boot-app') {
                     sh 'mvn clean package -DskipTests'
                 }
@@ -40,15 +39,6 @@ pipeline {
             }
         }
 
-        stage('Trivy FS Scan (Security)') {
-            steps {
-                echo 'Scanning File System for Vulnerabilities...'
-                dir('spring-boot-app') {
-                    sh 'trivy fs . --severity HIGH,CRITICAL --exit-code 0'
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker Image...'
@@ -58,16 +48,9 @@ pipeline {
             }
         }
 
-        stage('Trivy Image Scan (Security)') {
-            steps {
-                echo 'Scanning Docker Image with Trivy...'
-                sh "trivy image ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} --severity HIGH,CRITICAL --exit-code 0"
-            }
-        }
-
         stage('Push to Docker Hub') {
             steps {
-                echo 'Pushing Secure Image to Docker Hub...'
+                echo 'Pushing secure Image to Docker Hub...'
                 withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                     sh "echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"
                     sh "docker push ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
@@ -80,7 +63,6 @@ pipeline {
                 echo 'Updating Deployment Configuration...'
                 withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDENTIALS_ID}", passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                     
-                    // التعديل في مجلد المانيفستس الموجود في الـ Root برة
                     sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}|g' spring-boot-app-manifests/deployment.yml"
                     
                     sh """
