@@ -70,7 +70,7 @@ pipeline {
                         git config user.name "Jenkins CI"
                         git add spring-boot-app-manifests/deployment.yml
                         git commit -m "Update image tag to ${BUILD_NUMBER} [skip ci]"
-                        git push https://\${GITHUB_TOKEN}@github.com/\${GITHUB_USER}/ArgoCD-project.git HEAD:main
+                        git push https://\${GITHUB_TOKEN}@github.com/Mooi6/ArgoCD-project.git HEAD:main
                     """
                 }
             }
