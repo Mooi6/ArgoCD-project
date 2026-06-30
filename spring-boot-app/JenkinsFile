@@ -8,8 +8,8 @@ pipeline {
     environment {
         DOCKERHUB_USERNAME       = 'm066' 
         DOCKER_IMAGE_NAME        = "${DOCKERHUB_USERNAME}/spring-boot-app"
-        DOCKERHUB_CREDENTIALS_ID = 'test'
-        GITHUB_CREDENTIALS_ID    = 'github-credentials-id'
+        DOCKERHUB_CREDENTIALS_ID = 'dockerhub-credentials-id'
+        GITHUB_CREDENTIALS_ID    = 'test'
     }
 
     stages {
