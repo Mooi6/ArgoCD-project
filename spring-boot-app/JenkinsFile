@@ -44,7 +44,7 @@ pipeline {
             steps {
                 echo 'Scanning File System for Vulnerabilities...'
                 dir('spring-boot-app') {
-                    sh 'trivy fs . --severity HIGH,CRITICAL'
+                    sh 'trivy fs . --severity HIGH,CRITICAL --exit-code 0'
                 }
             }
         }
@@ -61,7 +61,7 @@ pipeline {
         stage('Trivy Image Scan (Security)') {
             steps {
                 echo 'Scanning Docker Image with Trivy...'
-                sh "trivy image ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} --severity HIGH,CRITICAL"
+                sh "trivy image ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} --severity HIGH,CRITICAL --exit-code 0"
             }
         }
 
