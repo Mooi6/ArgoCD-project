@@ -1,17 +1,14 @@
 pipeline {
     agent {
         node {
-            label 'kali-agent' // الـ Node بتاعتك
+            label 'kali-agent'
         }
     }
 
     environment {
-        // حساب الـ Docker Hub بتاعك اللي عملناه سوا
         DOCKERHUB_USERNAME       = 'm066' 
         DOCKER_IMAGE_NAME        = "${DOCKERHUB_USERNAME}/spring-boot-app"
         DOCKERHUB_CREDENTIALS_ID = 'dockerhub-credentials-id'
-        
-        // حساب الـ GitHub المعرف في الـ Credentials عندك
         GITHUB_CREDENTIALS_ID    = 'github-credentials-id'
     }
 
@@ -25,21 +22,16 @@ pipeline {
         stage('Build & Test with Maven') {
             steps {
                 echo 'Building Application...'
-                // الدخول للمسار الصحيح للفولدر جوة الريبو
-                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                // بما إننا واقفين جوه المجلد الفعلي، هنشغل المافن مباشرة هنا
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('SonarQube Analysis (Secops)') {
             steps {
                 echo 'Running SonarQube Code Quality Scan...'
-                // استدعاء السيرفر المحلي بتاعك اللي قايم على بورت 9000
                 withSonarQubeEnv('sonar-server') {
-                    dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                        sh 'mvn sonar:sonar'
-                    }
+                    sh 'mvn sonar:sonar'
                 }
             }
         }
@@ -47,18 +39,14 @@ pipeline {
         stage('Trivy FS Scan (Security)') {
             steps {
                 echo 'Scanning File System for Vulnerabilities...'
-                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh 'trivy fs . --severity HIGH,CRITICAL'
-                }
+                sh 'trivy fs . --severity HIGH,CRITICAL'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker Image...'
-                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ."
-                }
+                sh "docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ."
             }
         }
 
@@ -84,15 +72,15 @@ pipeline {
                 echo 'Updating Deployment Configuration...'
                 withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDENTIALS_ID}", passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                     
-                    // استبدال الـ Tag في المسار الصحيح للمجلد
-                    sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}|g' java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml"
+                    // تعديل مسار ملف المانيفست بناءً على هيكل الريبو بتاعك
+                    sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}|g' ../spring-boot-app-manifests/deployment.yml"
                     
                     sh """
                         git config user.email "jenkins@local.com"
                         git config user.name "Jenkins CI"
-                        git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        git add ../spring-boot-app-manifests/deployment.yml
                         git commit -m "Update image tag to ${BUILD_NUMBER} [skip ci]"
-                        git push https://\${GITHUB_TOKEN}@github.com/\${GITHUB_USER}/Jenkins-Zero-To-Hero.git HEAD:main
+                        git push https://\${GITHUB_TOKEN}@github.com/\${GITHUB_USER}/ArgoCD-project.git HEAD:main
                     """
                 }
             }
